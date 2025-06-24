@@ -131,9 +131,7 @@ export default function BalanceChart({ data, isLoading, timeRange }: BalanceChar
                 r: 8, 
                 strokeWidth: 2, 
                 stroke: '#059669',
-                fill: '#ffffff',
-                shadowColor: '#059669',
-                shadowBlur: 10
+                fill: '#ffffff'
               }}
             />
           </AreaChart>

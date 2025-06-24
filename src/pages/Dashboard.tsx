@@ -7,7 +7,7 @@ import { useRealTimeTransactions } from '../utils/transactionEngine';
 import StatCard from '../components/dashboard/StatCard';
 import BalanceChart from '../components/dashboard/BalanceChart';
 import IncomeExpenseChart from '../components/dashboard/IncomeExpenseChart';
-import TransactionsList from '../components/dashboard/TransactionsList';
+// Removed unused import: TransactionsList
 import UpcomingBills from '../components/dashboard/UpcomingBills';
 import QuickActions from '../components/dashboard/QuickActions';
 

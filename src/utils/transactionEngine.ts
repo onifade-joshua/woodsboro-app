@@ -1,5 +1,19 @@
 // utils/transactionEngine.ts
-import { Transaction, BalanceEntry } from '../types/financial';
+import { useState, useEffect, useCallback } from 'react';
+
+// Types
+export interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  amount: number;
+}
+
+export interface BalanceEntry {
+  date: string;
+  balance: number;
+}
 
 // Transaction templates for military accounts
 const MILITARY_TRANSACTION_TEMPLATES = {
@@ -210,8 +224,6 @@ export const getTransactionEngine = (): TransactionEngine => {
 };
 
 // React Hook for real-time updates
-import { useState, useEffect, useCallback } from 'react';
-
 export const useRealTimeTransactions = () => {
   const [engine] = useState(() => getTransactionEngine());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -268,17 +280,3 @@ export const useRealTimeTransactions = () => {
     recentTransactions: transactions.slice(0, 10)
   };
 };
-
-// Types
-export interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  category: string;
-  amount: number;
-}
-
-export interface BalanceEntry {
-  date: string;
-  balance: number;
-}
