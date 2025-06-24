@@ -5,13 +5,13 @@ import { useToast } from '../context/ToastContext';
 // Mock user data
 const mockUserData = {
   personalInfo: {
-    firstName: 'Micheal',
-    lastName: 'Carter',
-    email: 'michealcarter@yahoo.com',
+    firstName: 'Jefferson',
+    lastName: 'Moreno',
+    email: 'jeffersonmoreno109370@gmail.com',
     phone: '(555) 123-4567',
     address: '123 Main St, Anytown, CA 94321',
     dateOfBirth: '1985-06-15',
-    occupation: 'Marine Engineer'
+    occupation: 'Marine Veteran'
   },
   security: {
     twoFactorEnabled: true,
