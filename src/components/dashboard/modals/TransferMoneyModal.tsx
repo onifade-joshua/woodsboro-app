@@ -14,22 +14,18 @@ import {
   FiCheck,
 } from 'react-icons/fi';
 import { BsBank2, BsBuildingCheck, BsShieldCheck } from 'react-icons/bs';
+import DeliverySpeedStep, { Speed } from './DeliverySpeedStep';
+import ConfirmTransferDialog from './ConfirmTransferDialog';
 
 type TransferType = 'internal' | 'external-bank' | 'zelle';
-type Step = 'details' | 'review' | 'complete';
+type Step = 'details' | 'speed' | 'review' | 'complete';
 type Timing = 'now' | 'scheduled';
-type Speed = 'standard' | 'expedited';
 
 type TransferMoneyModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
-// Directory of external banks selectable as a transfer recipient. `domain` is the
-// bank's own official web domain — used to pull their real logo live (the same
-// approach tools like Plaid use for "choose your bank" pickers) instead of us
-// bundling copies of their trademarked artwork. `initials`/`color` are the
-// fallback shown if the live logo fails to load.
 const BANK_DIRECTORY: {
   value: string;
   label: string;
@@ -84,11 +80,19 @@ function BankLogo({
   );
 }
 
-const STEPS: { key: Step; label: string }[] = [
-  { key: 'details', label: 'Transfer details' },
-  { key: 'review', label: 'Review' },
-  { key: 'complete', label: 'Confirmation' },
-];
+const SPEED_FEES: Record<Speed, number> = {
+  standard: 45,
+  expedited: 95,
+};
+
+function getSteps(transferType: TransferType): { key: Step; label: string }[] {
+  const steps: { key: Step; label: string }[] = [{ key: 'details', label: 'Transfer details' }];
+  if (transferType === 'external-bank') {
+    steps.push({ key: 'speed', label: 'Delivery speed' });
+  }
+  steps.push({ key: 'review', label: 'Review' }, { key: 'complete', label: 'Confirmation' });
+  return steps;
+}
 
 export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyModalProps) {
   const [step, setStep] = useState<Step>('details');
@@ -110,6 +114,7 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationNumber, setConfirmationNumber] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const accountOptions = [
     { value: 'checking', label: 'Checking', last4: '4567', balance: 12458.32, icon: <BsBank2 className="text-[#1B4B91]" /> },
@@ -123,20 +128,13 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
     { value: 'zelle', label: 'Zelle', subtitle: 'Send with an email or phone', icon: <FiSmartphone className="text-[#1B4B91]" /> },
   ];
 
-  // Fee schedule — mirrors how most U.S. banks price transfers: free within your
-  // own accounts and over Zelle, a flat fee for standard external ACH transfers,
-  // and a higher fee for expedited (next-business-day) delivery.
-  const speedOptions: { value: Speed; label: string; eta: string; fee: number }[] = [
-    { value: 'standard', label: 'Standard', eta: '1–3 business days', fee: 45 },
-    { value: 'expedited', label: 'Expedited', eta: 'Next business day', fee: 95 },
-  ];
-
   const getFee = () => {
     if (transferType === 'internal' || transferType === 'zelle') return 0;
-    return speedOptions.find((s) => s.value === speed)?.fee ?? 0;
+    return SPEED_FEES[speed];
   };
 
   const externalBankOptions = BANK_DIRECTORY;
+  const steps = getSteps(transferType);
 
   const resetForm = () => {
     setStep('details');
@@ -152,6 +150,7 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
     setSpeed('standard');
     setConfirmationNumber('');
     setCopied(false);
+    setShowConfirmDialog(false);
   };
 
   const handleClose = () => {
@@ -181,15 +180,23 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
     return false;
   };
 
-  const goToReview = (e: React.FormEvent) => {
+  const goToNextStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isDetailsValid()) return;
-    setStep('review');
+    setStep(transferType === 'external-bank' ? 'speed' : 'review');
+  };
+
+  const goBackFromReview = () => {
+    setStep(transferType === 'external-bank' ? 'speed' : 'details');
+  };
+
+  // Opens the confirmation dialog instead of submitting immediately.
+  const handleConfirmClick = () => {
+    setShowConfirmDialog(true);
   };
 
   const handleConfirm = async () => {
     setIsLoading(true);
-    // In production this would call the transfer API and handle failures.
     await new Promise((resolve) => setTimeout(resolve, 1600));
     const ref =
       'TXN' +
@@ -197,6 +204,7 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
       Date.now().toString().slice(-6);
     setConfirmationNumber(ref);
     setIsLoading(false);
+    setShowConfirmDialog(false);
     setStep('complete');
   };
 
@@ -218,6 +226,10 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
       : transferType === 'external-bank'
       ? externalBankOptions.find((b) => b.value === externalBankInfo.bankName)?.label ?? 'your external account'
       : zelleRecipient || 'your recipient';
+
+  const fromLabel = fromAccountDetails
+    ? `${fromAccountDetails.label} •••• ${fromAccountDetails.last4}`
+    : 'your account';
 
   const todayISO = new Date().toISOString().split('T')[0];
 
@@ -357,12 +369,11 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
     }
   };
 
-  // Stepper shown across all non-complete steps, and as a completed trail on the confirmation screen
   const renderStepper = () => {
-    const currentIndex = STEPS.findIndex((s) => s.key === step);
+    const currentIndex = steps.findIndex((s) => s.key === step);
     return (
       <div className="flex items-center gap-2 px-6 pt-4">
-        {STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const isDone = i < currentIndex || step === 'complete';
           const isActive = i === currentIndex && step !== 'complete';
           return (
@@ -387,7 +398,7 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
                   {s.label}
                 </span>
               </div>
-              {i < STEPS.length - 1 && (
+              {i < steps.length - 1 && (
                 <div
                   className={`h-px flex-1 mx-2.5 ${
                     isDone ? 'bg-[#0A1F44]' : 'bg-gray-200 dark:bg-gray-700'
@@ -405,13 +416,15 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* NOTE: added `relative` here so ConfirmTransferDialog's `absolute inset-0`
+          overlays just this card, not the whole viewport. */}
+      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             {step === 'review' && (
               <button
-                onClick={() => setStep('details')}
+                onClick={goBackFromReview}
                 className="text-gray-400 hover:text-[#0A1F44] dark:hover:text-white transition-colors mr-1"
                 aria-label="Back"
               >
@@ -420,11 +433,17 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
             )}
             <div>
               <h2 className="text-lg font-semibold text-[#0A1F44] dark:text-white">
-                {step === 'complete' ? 'Transfer complete' : 'Transfer money'}
+                {step === 'complete'
+                  ? 'Transfer complete'
+                  : step === 'speed'
+                  ? 'Delivery speed'
+                  : 'Transfer money'}
               </h2>
               {step !== 'complete' && (
                 <p className="text-xs text-[#94A3B8] mt-0.5">
-                  Move money between accounts or send to someone else
+                  {step === 'speed'
+                    ? 'Choose how quickly this transfer should arrive'
+                    : 'Move money between accounts or send to someone else'}
                 </p>
               )}
             </div>
@@ -441,7 +460,6 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
         {renderStepper()}
 
         {step === 'complete' ? (
-          // Confirmation state — modeled after real bank "transfer complete" receipts
           <div className="p-6">
             <div className="text-center pt-2 pb-6">
               <div className="mx-auto h-14 w-14 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4">
@@ -473,9 +491,7 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               </div>
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="text-[#94A3B8]">From</span>
-                <span className="text-[#0A1F44] dark:text-white font-medium">
-                  {fromAccountDetails?.label} •••• {fromAccountDetails?.last4}
-                </span>
+                <span className="text-[#0A1F44] dark:text-white font-medium">{fromLabel}</span>
               </div>
               {fee > 0 && (
                 <>
@@ -532,8 +548,15 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               Done
             </button>
           </div>
+        ) : step === 'speed' ? (
+          <DeliverySpeedStep
+            amount={Number(amount || 0)}
+            value={speed}
+            onChange={setSpeed}
+            onBack={() => setStep('details')}
+            onContinue={() => setStep('review')}
+          />
         ) : step === 'review' ? (
-          // Review state — the "check everything before you commit" screen every major bank has
           <div className="p-6 space-y-5">
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="bg-gray-50 dark:bg-gray-800/60 px-4 py-3">
@@ -547,9 +570,7 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               <div className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-[#94A3B8]">From</span>
-                  <span className="text-[#0A1F44] dark:text-white font-medium text-right">
-                    {fromAccountDetails?.label} •••• {fromAccountDetails?.last4}
-                  </span>
+                  <span className="text-[#0A1F44] dark:text-white font-medium text-right">{fromLabel}</span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <span className="text-[#94A3B8]">To</span>
@@ -582,9 +603,8 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
                 {transferType === 'external-bank' && (
                   <div className="flex items-center justify-between px-4 py-3">
                     <span className="text-[#94A3B8]">Delivery speed</span>
-                    <span className="text-[#0A1F44] dark:text-white font-medium">
-                      {speedOptions.find((s) => s.value === speed)?.label} (
-                      {speedOptions.find((s) => s.value === speed)?.eta})
+                    <span className="text-[#0A1F44] dark:text-white font-medium capitalize">
+                      {speed} ({speed === 'expedited' ? 'Next business day' : '1–3 business days'})
                     </span>
                   </div>
                 )}
@@ -626,39 +646,29 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               <button
                 type="button"
                 className="px-5 py-2.5 rounded-full text-sm font-medium text-[#334155] dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                onClick={() => setStep('details')}
+                onClick={goBackFromReview}
               >
                 Edit
               </button>
+              {/* CHANGED: opens the confirmation dialog instead of calling handleConfirm directly */}
               <button
                 type="button"
-                onClick={handleConfirm}
+                onClick={handleConfirmClick}
                 disabled={isLoading}
                 className="px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-[#0A1F44] hover:bg-[#132C5A] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <FiLock size={14} />
-                    Confirm transfer
-                  </>
-                )}
+                <FiLock size={14} />
+                Confirm transfer
               </button>
             </div>
 
             <div className="flex items-center justify-center gap-2 text-xs text-[#94A3B8] pt-1">
               <FiShield className="h-3.5 w-3.5" />
-              256-bit encryption · FDIC insured · Real-time fraud monitoring
+              256-bit encryption · FDIC insured
             </div>
           </div>
         ) : (
-          // Details state
-          <form onSubmit={goToReview} className="p-6 space-y-6">
-            {/* Source account */}
+          <form onSubmit={goToNextStep} className="p-6 space-y-6">
             <div>
               <label className="block text-sm font-medium text-[#334155] dark:text-gray-300 mb-2">
                 From
@@ -691,7 +701,6 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               </div>
             </div>
 
-            {/* Transfer type */}
             <div>
               <label className="block text-sm font-medium text-[#334155] dark:text-gray-300 mb-2">
                 Transfer type
@@ -728,7 +737,6 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
 
             {renderDestinationFields()}
 
-            {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-[#334155] dark:text-gray-300 mb-2">
                 Amount
@@ -751,10 +759,9 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
                   USD
                 </span>
               </div>
-              {fee > 0 && Number(amount) > 0 && (
+              {transferType === 'external-bank' && Number(amount) > 0 && (
                 <p className="text-xs text-[#64748B] dark:text-gray-400 mt-1.5">
-                  Plus a ${fee.toFixed(2)} transfer fee — ${totalDebit.toFixed(2)} total will be
-                  debited from your account
+                  You'll choose a delivery speed and see the exact fee on the next step.
                 </p>
               )}
               {fromAccountDetails && exceedsBalance && (
@@ -772,40 +779,6 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               )}
             </div>
 
-            {/* Speed / fee — only external bank transfers carry a fee */}
-            {transferType === 'external-bank' && (
-              <div>
-                <label className="block text-sm font-medium text-[#334155] dark:text-gray-300 mb-2">
-                  Delivery speed
-                </label>
-                <div className="space-y-2">
-                  {speedOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSpeed(option.value)}
-                      className={`w-full p-3.5 rounded-xl border transition-colors flex items-center justify-between ${
-                        speed === option.value
-                          ? 'border-[#0A1F44] bg-[#0A1F44]/5'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#1B4B91]'
-                      }`}
-                    >
-                      <div className="text-left">
-                        <p className="text-sm font-medium text-[#0A1F44] dark:text-white">
-                          {option.label}
-                        </p>
-                        <p className="text-xs text-[#94A3B8]">{option.eta}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-[#0A1F44] dark:text-white">
-                        ${option.fee.toFixed(2)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* When */}
             <div>
               <label className="block text-sm font-medium text-[#334155] dark:text-gray-300 mb-2">
                 When
@@ -849,7 +822,6 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               )}
             </div>
 
-            {/* Memo */}
             <div>
               <label className="block text-sm font-medium text-[#334155] dark:text-gray-300 mb-2">
                 Memo (optional)
@@ -863,19 +835,17 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
               />
             </div>
 
-            {/* Notice for non-internal transfers */}
             {transferType !== 'internal' && (
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 rounded-xl p-3.5 flex items-start gap-2.5">
                 <FiAlertTriangle className="text-amber-500 mt-0.5 flex-shrink-0" size={16} />
                 <p className="text-xs text-amber-800 dark:text-amber-300">
                   {transferType === 'external-bank'
-                    ? `A $${fee.toFixed(2)} transfer fee applies to ${speed} delivery. Double-check the account and routing numbers before confirming.`
+                    ? "On the next step you'll pick a delivery speed and see its fee before confirming."
                     : "Zelle transfers usually arrive within minutes and can't be canceled once sent. Only send to people you trust."}
                 </p>
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
               <button
                 type="button"
@@ -889,17 +859,32 @@ export default function TransferMoneyModal({ isOpen, onClose }: TransferMoneyMod
                 className="px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-[#0A1F44] hover:bg-[#132C5A] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!isDetailsValid()}
               >
-                Review transfer
+                {transferType === 'external-bank' ? 'Choose delivery speed' : 'Review transfer'}
               </button>
             </div>
 
-            {/* Security footer */}
             <div className="flex items-center justify-center gap-2 text-xs text-[#94A3B8] pt-1">
               <FiShield className="h-3.5 w-3.5" />
-              256-bit encryption · FDIC insured · Real-time fraud monitoring
+              256-bit encryption · FDIC insured 
             </div>
           </form>
         )}
+
+        {/* ADDED: the dialog was imported but never rendered before. It now sits
+            here as a sibling within the (now-relative) modal card, so its
+            `absolute inset-0` covers just the card. */}
+        <ConfirmTransferDialog
+          isOpen={showConfirmDialog}
+          amount={Number(amount || 0)}
+          totalDebit={totalDebit}
+          destinationLabel={destinationLabel}
+          fromLabel={fromLabel}
+          isIrreversible={transferType !== 'internal'}
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+          onCancel={() => setShowConfirmDialog(false)}
+          onConfirm={handleConfirm}
+        />
       </div>
     </div>
   );

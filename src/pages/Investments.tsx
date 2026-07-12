@@ -5,6 +5,23 @@ import StatCard from '../components/dashboard/StatCard';
 import { useToast } from '../context/ToastContext';
 import { NavLink } from 'react-router-dom';
 
+// Helper: N days before today, as an ISO date string
+const daysAgo = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString();
+};
+
+type TradeTransaction = {
+  id: number;
+  date: string;
+  type: 'buy' | 'sell' | 'dividend';
+  symbol: string;
+  shares: number;
+  price: number;
+  total: number;
+};
+
 // Mock data for different time ranges
 const generatePerformanceData = (timeRange: string) => {
   const now = new Date();
@@ -117,12 +134,14 @@ const getMockPortfolioData = (timeRange: string) => {
         holdings: 3
       }
     ],
+    // Dates are relative to today instead of frozen in the past, so the
+    // activity feed always reads as recent no matter when this demo runs.
     recentTransactions: [
-      { id: 1, date: '2023-06-01', type: 'buy', symbol: 'AAPL', shares: 5, price: 182.63, total: 913.15 },
-      { id: 2, date: '2023-05-28', type: 'sell', symbol: 'MSFT', shares: 2, price: 335.40, total: 670.80 },
-      { id: 3, date: '2023-05-15', type: 'buy', symbol: 'VTI', shares: 10, price: 220.51, total: 2205.10 },
-      { id: 4, date: '2023-05-10', type: 'dividend', symbol: 'SCHD', shares: 0, price: 0, total: 86.25 }
-    ],
+      { id: 1, date: daysAgo(1), type: 'buy', symbol: 'AAPL', shares: 5, price: 182.63, total: 913.15 },
+      { id: 2, date: daysAgo(4), type: 'sell', symbol: 'MSFT', shares: 2, price: 335.40, total: 670.80 },
+      { id: 3, date: daysAgo(9), type: 'buy', symbol: 'VTI', shares: 10, price: 220.51, total: 2205.10 },
+      { id: 4, date: daysAgo(14), type: 'dividend', symbol: 'SCHD', shares: 0, price: 0, total: 86.25 }
+    ] as TradeTransaction[],
     performanceHistory: generatePerformanceData(timeRange)
   };
 };
@@ -342,7 +361,7 @@ export default function Investments() {
               <h2 className="font-semibold">Asset Allocation</h2>
               <button
                 className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                onClick={() => showToast('info', 'Portfolio rebalancing feature coming soon!')}
+                onClick={() => showToast('info', "We'll notify you when portfolio rebalancing is ready.")}
               >
                 Rebalance
               </button>
@@ -529,7 +548,7 @@ export default function Investments() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => showToast('info', 'Buy stocks feature coming soon!')}
+                onClick={() => showToast('info', "We'll notify you when buy orders are ready.")}
               >
                 <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full text-blue-600 dark:text-blue-400 mb-2">
                   <FiTrendingUp className="h-5 w-5" />
@@ -539,7 +558,7 @@ export default function Investments() {
 
               <button
                 className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => showToast('info', 'Sell stocks feature coming soon!')}
+                onClick={() => showToast('info', "We'll notify you when sell orders are ready.")}
               >
                 <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full text-red-600 dark:text-red-400 mb-2">
                   <FiTrendingDown className="h-5 w-5" />
@@ -549,7 +568,7 @@ export default function Investments() {
 
               <button
                 className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => showToast('info', 'Portfolio rebalancing coming soon!')}
+                onClick={() => showToast('info', "We'll notify you when portfolio rebalancing is ready.")}
               >
                 <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-full text-green-600 dark:text-green-400 mb-2">
                   <FiPieChart className="h-5 w-5" />
@@ -559,7 +578,7 @@ export default function Investments() {
 
               <button
                 className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                onClick={() => showToast('info', 'Deposit feature coming soon!')}
+                onClick={() => showToast('info', "We'll notify you when deposits are available here.")}
               >
                 <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-full text-purple-600 dark:text-purple-400 mb-2">
                   <FiDollarSign className="h-5 w-5" />
@@ -572,4 +591,4 @@ export default function Investments() {
       </div>
     </div>
   );
-} 
+}

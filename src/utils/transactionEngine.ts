@@ -15,47 +15,52 @@ export interface BalanceEntry {
   balance: number;
 }
 
-// Transaction templates for military accounts
-const MILITARY_TRANSACTION_TEMPLATES = {
+// Transaction templates for a typical personal/civilian checking account
+const TRANSACTION_TEMPLATES = {
   income: [
-    { description: 'DoD Direct Deposit - Base Pay', category: 'Military Pay', amountRange: [8000, 12000] },
-    { description: 'Combat Pay Bonus', category: 'Combat Pay', amountRange: [2000, 5000] },
-    { description: 'BAH Housing Allowance', category: 'Housing Allowance', amountRange: [2500, 4000] },
-    { description: 'BAS Food Allowance', category: 'Food Allowance', amountRange: [200, 400] },
-    { description: 'Hazardous Duty Pay', category: 'Special Pay', amountRange: [1000, 2500] },
-    { description: 'Flight Pay', category: 'Special Pay', amountRange: [800, 1500] },
-    { description: 'Family Separation Allowance', category: 'Family Allowance', amountRange: [1200, 2000] },
-    { description: 'TDY Per Diem Reimbursement', category: 'Travel Allowance', amountRange: [500, 1800] },
-    { description: 'Deployment Savings Interest', category: 'Investment Returns', amountRange: [300, 800] },
-    { description: 'Military Bonus Payment', category: 'Bonus', amountRange: [5000, 15000] }
+    { description: 'Payroll Direct Deposit', category: 'Paycheck', amountRange: [2200, 4500] },
+    { description: 'Freelance Client Payment', category: 'Freelance Income', amountRange: [300, 1800] },
+    { description: 'Interest Payment', category: 'Interest', amountRange: [5, 40] },
+    { description: 'Cashback Rewards', category: 'Rewards', amountRange: [10, 75] },
+    { description: 'Tax Refund', category: 'Refund', amountRange: [400, 2200] },
+    { description: 'Venmo Transfer Received', category: 'Transfer', amountRange: [20, 300] },
+    { description: 'Dividend Payment', category: 'Investment Returns', amountRange: [50, 400] },
+    { description: 'Reimbursement - Expense Report', category: 'Reimbursement', amountRange: [80, 500] },
+    { description: 'Side Gig Payout', category: 'Side Income', amountRange: [100, 600] },
+    { description: 'Bonus Payment', category: 'Bonus', amountRange: [500, 3000] },
   ],
   expenses: [
-    { description: 'TSP Contribution', category: 'Retirement', amountRange: [2000, 8000] },
-    { description: 'Military Exchange Purchase', category: 'Shopping', amountRange: [50, 500] },
-    { description: 'Base Commissary Groceries', category: 'Groceries', amountRange: [100, 400] },
-    { description: 'SGLI Life Insurance Premium', category: 'Insurance', amountRange: [400, 600] },
-    { description: 'USAA Auto Insurance', category: 'Insurance', amountRange: [150, 300] },
-    { description: 'Off-Base Housing Rent', category: 'Housing', amountRange: [2000, 3500] },
-    { description: 'Military Star Card Payment', category: 'Credit Card', amountRange: [500, 2000] },
-    { description: 'Family Cell Phone Plan', category: 'Utilities', amountRange: [120, 250] },
-    { description: 'Military Spouse Education', category: 'Education', amountRange: [500, 1500] },
-    { description: 'PCS Moving Expenses', category: 'Moving', amountRange: [1000, 5000] },
-    { description: 'Base Child Care Center', category: 'Childcare', amountRange: [400, 800] },
-    { description: 'Tricare Medical Co-pay', category: 'Healthcare', amountRange: [20, 100] },
-    { description: 'Base Auto Skills Center', category: 'Vehicle Maintenance', amountRange: [100, 600] },
-    { description: 'Military Clothing Allowance', category: 'Clothing', amountRange: [200, 800] },
-    { description: 'Emergency Loan Repayment', category: 'Loan Payment', amountRange: [300, 1200] }
+    { description: '401(k) Contribution', category: 'Retirement', amountRange: [200, 900] },
+    { description: 'Grocery Store', category: 'Groceries', amountRange: [40, 220] },
+    { description: 'Online Shopping', category: 'Shopping', amountRange: [20, 350] },
+    { description: 'Life Insurance Premium', category: 'Insurance', amountRange: [40, 120] },
+    { description: 'Auto Insurance Payment', category: 'Insurance', amountRange: [90, 220] },
+    { description: 'Rent Payment', category: 'Housing', amountRange: [1200, 2600] },
+    { description: 'Credit Card Payment', category: 'Credit Card', amountRange: [200, 1500] },
+    { description: 'Mobile Phone Bill', category: 'Utilities', amountRange: [40, 120] },
+    { description: 'Streaming Subscription', category: 'Subscriptions', amountRange: [8, 25] },
+    { description: 'Gym Membership', category: 'Health & Fitness', amountRange: [30, 90] },
+    { description: 'Daycare Payment', category: 'Childcare', amountRange: [300, 800] },
+    { description: 'Health Insurance Co-pay', category: 'Healthcare', amountRange: [15, 100] },
+    { description: 'Auto Repair Shop', category: 'Vehicle Maintenance', amountRange: [80, 600] },
+    { description: 'Clothing Purchase', category: 'Clothing', amountRange: [30, 200] },
+    { description: 'Personal Loan Payment', category: 'Loan Payment', amountRange: [150, 700] },
+    { description: 'Restaurant', category: 'Dining', amountRange: [15, 90] },
+    { description: 'Electric Bill', category: 'Utilities', amountRange: [60, 180] },
+    { description: 'Coffee Shop', category: 'Dining', amountRange: [4, 15] },
+    { description: 'Gas Station', category: 'Transportation', amountRange: [30, 70] },
+    { description: 'Home Improvement Store', category: 'Home', amountRange: [25, 400] },
   ]
 };
 
 export class TransactionEngine {
   private transactions: Transaction[] = [];
   private balanceHistory: BalanceEntry[] = [];
-  private currentBalance: number = 1950000; // Starting balance
+  private currentBalance: number = 12500; // Starting balance
   private lastTransactionDate: string = '';
   private transactionCounter: number = 0;
 
-  constructor(initialBalance: number = 1950000) {
+  constructor(initialBalance: number = 12500) {
     this.currentBalance = initialBalance;
     this.initializeData();
   }
@@ -66,11 +71,11 @@ export class TransactionEngine {
     for (let i = 30; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      
+
       // Add balance entry
       this.balanceHistory.push({
         date: date.toISOString().split('T')[0],
-        balance: this.currentBalance + (Math.random() - 0.5) * 100000 // Some variation
+        balance: this.currentBalance + (Math.random() - 0.5) * 2000 // Some variation
       });
 
       // Generate 2 transactions per day for historical data
@@ -81,20 +86,20 @@ export class TransactionEngine {
   }
 
   private generateRandomTransaction(date: Date, isIncome: boolean): Transaction {
-    const templates = isIncome ? 
-      MILITARY_TRANSACTION_TEMPLATES.income : 
-      MILITARY_TRANSACTION_TEMPLATES.expenses;
-    
+    const templates = isIncome ?
+      TRANSACTION_TEMPLATES.income :
+      TRANSACTION_TEMPLATES.expenses;
+
     const template = templates[Math.floor(Math.random() * templates.length)];
     const amount = Math.floor(
-      Math.random() * (template.amountRange[1] - template.amountRange[0]) + 
+      Math.random() * (template.amountRange[1] - template.amountRange[0]) +
       template.amountRange[0]
     );
 
     this.transactionCounter++;
-    
+
     return {
-      id: `mil-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${this.transactionCounter}`,
+      id: `txn-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${this.transactionCounter}`,
       date: date.toISOString(),
       description: template.description,
       category: template.category,
@@ -104,19 +109,19 @@ export class TransactionEngine {
 
   private generateDailyTransactions(date: Date): Transaction[] {
     const dailyTransactions: Transaction[] = [];
-    
+
     // Generate 2 transactions per day
     for (let i = 0; i < 2; i++) {
       const transactionTime = new Date(date);
       transactionTime.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
-      
+
       // 40% chance of income, 60% chance of expense
       const isIncome = Math.random() < 0.4;
       const transaction = this.generateRandomTransaction(transactionTime, isIncome);
-      
+
       dailyTransactions.push(transaction);
       this.transactions.push(transaction);
-      
+
       // Update balance
       this.currentBalance += transaction.amount;
     }
@@ -124,26 +129,26 @@ export class TransactionEngine {
     return dailyTransactions;
   }
 
-  public getDailyTransactionUpdate(): { 
-    newTransactions: Transaction[], 
+  public getDailyTransactionUpdate(): {
+    newTransactions: Transaction[],
     updatedBalance: number,
-    balanceChange: number 
+    balanceChange: number
   } {
     const today = new Date();
     const todayString = today.toISOString().split('T')[0];
-    
+
     // Check if we already generated transactions for today
     if (this.lastTransactionDate === todayString) {
-      return { 
-        newTransactions: [], 
+      return {
+        newTransactions: [],
         updatedBalance: this.currentBalance,
-        balanceChange: 0 
+        balanceChange: 0
       };
     }
 
     const previousBalance = this.currentBalance;
     const newTransactions = this.generateDailyTransactions(today);
-    
+
     // Update balance history
     this.balanceHistory.push({
       date: todayString,
@@ -156,7 +161,7 @@ export class TransactionEngine {
     }
 
     this.lastTransactionDate = todayString;
-    
+
     return {
       newTransactions,
       updatedBalance: this.currentBalance,
@@ -165,7 +170,7 @@ export class TransactionEngine {
   }
 
   public getAllTransactions(): Transaction[] {
-    return [...this.transactions].sort((a, b) => 
+    return [...this.transactions].sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }
@@ -199,7 +204,7 @@ export class TransactionEngine {
     // Update today's balance
     const today = new Date().toISOString().split('T')[0];
     const todayBalanceIndex = this.balanceHistory.findIndex(entry => entry.date === today);
-    
+
     if (todayBalanceIndex >= 0) {
       this.balanceHistory[todayBalanceIndex].balance = this.currentBalance;
     } else {
@@ -233,7 +238,7 @@ export const useRealTimeTransactions = () => {
 
   const updateTransactions = useCallback(() => {
     const update = engine.getDailyTransactionUpdate();
-    
+
     if (update.newTransactions.length > 0) {
       console.log('New transactions generated:', update.newTransactions);
       setLastUpdate(new Date());
@@ -242,7 +247,7 @@ export const useRealTimeTransactions = () => {
     setTransactions(engine.getAllTransactions());
     setBalance(engine.getCurrentBalance());
     setBalanceHistory(engine.getBalanceHistory());
-    
+
     return update;
   }, [engine]);
 

@@ -20,7 +20,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         ))}
         <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            🎖️ Military Service Account
+            Service Account
           </p>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function BalanceChart({ data, isLoading, timeRange }: BalanceChar
         <div className="flex items-center space-x-3">
           <h2 className="font-semibold text-lg">Balance History</h2>
           <span className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded-full font-medium">
-            🎖️ Military Account
+            Service Account
           </span>
         </div>
         <div className="text-right">
@@ -143,7 +143,7 @@ export default function BalanceChart({ data, isLoading, timeRange }: BalanceChar
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span className="text-gray-600 dark:text-gray-400">Military Service Account</span>
+              <span className="text-gray-600 dark:text-gray-400">Service Account</span>
             </div>
             <div className="text-gray-500 dark:text-gray-400">
               📈 {timeRange === 'week' ? 'Weekly' : timeRange === 'month' ? 'Monthly' : 'Yearly'} Growth

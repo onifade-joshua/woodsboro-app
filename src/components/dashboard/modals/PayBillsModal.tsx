@@ -1,263 +1,203 @@
 import { useState } from 'react';
-import { FiCheck, FiShield, FiClock, FiAlertTriangle, FiDollarSign, FiHome, FiWifi, FiPhone, FiTv } from 'react-icons/fi';
+import {
+  FiCheck,
+  FiFileText,
+  FiClock,
+  FiAlertTriangle,
+  FiDollarSign,
+  FiHome,
+  FiWifi,
+  FiPhone,
+  FiTv,
+  FiZap,
+  FiDroplet,
+  FiCreditCard,
+  FiTruck,
+  FiPlus,
+  FiCalendar,
+  FiChevronDown,
+} from 'react-icons/fi';
+import { useToast } from '../../../context/ToastContext';
 
 type Bill = {
   id: string;
   name: string;
   amount: number;
   dueDate: string;
-  category: 'essential' | 'utilities' | 'entertainment' | 'housing';
-  priority: 'high' | 'medium' | 'low';
-  vendor: string;
+  category: 'housing' | 'utilities' | 'credit' | 'entertainment' | 'insurance' | 'loan';
+  payee: string;
+  accountNumber: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
-  description: string;
+  autopay?: boolean;
 };
 
 type Account = {
   value: string;
   label: string;
   balance: number;
-  type: 'checking' | 'savings' | 'military';
+  type: 'checking' | 'savings';
 };
 
 type PayBillsModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onBillsPaid?: (paidBills: { name: string; amount: number }[]) => void;
 };
 
-export default function MilitaryPayBillsModal({ isOpen, onClose }: PayBillsModalProps) {
+export default function PayBillsModal({ isOpen, onClose, onBillsPaid }: PayBillsModalProps) {
+  const { showToast } = useToast();
   const [selectedBills, setSelectedBills] = useState<string[]>([]);
-  const [fromAccount, setFromAccount] = useState('');
+  const [fromAccount, setFromAccount] = useState('primary-checking');
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [payDates, setPayDates] = useState<Record<string, string>>({});
+  const [amounts, setAmounts] = useState<Record<string, number>>({});
 
   const bills: Bill[] = [
-    { 
-      id: 'bill1', 
-      name: 'Base Housing Allowance', 
-      amount: 1850.00, 
+    {
+      id: 'bill1',
+      name: 'Rent / Mortgage',
+      amount: 1850.0,
       dueDate: '2025-07-01',
       category: 'housing',
-      priority: 'high',
-      vendor: 'Base Housing Office',
+      payee: 'Woodsboro Property Management',
+      accountNumber: '••••3391',
       icon: FiHome,
-      description: 'Monthly housing allowance payment'
     },
-    { 
-      id: 'bill2', 
-      name: 'USAA Auto Insurance', 
-      amount: 185.50, 
+    {
+      id: 'bill2',
+      name: 'Electric Bill',
+      amount: 112.4,
       dueDate: '2025-06-28',
-      category: 'essential',
-      priority: 'high',
-      vendor: 'USAA Insurance',
-      icon: FiShield,
-      description: 'Comprehensive auto coverage with military discount'
+      category: 'utilities',
+      payee: 'City Power & Light',
+      accountNumber: '••••7742',
+      icon: FiZap,
+      autopay: true,
     },
-    { 
-      id: 'bill3', 
-      name: 'Chase Credit Card', 
-      amount: 420.75, 
-      dueDate: '2025-06-30',
-      category: 'essential',
-      priority: 'high',
-      vendor: 'JPMorgan Chase',
-      icon: FiDollarSign,
-      description: 'Chase Sapphire Military Benefits Card'
+    {
+      id: 'bill3',
+      name: 'Water & Sewer',
+      amount: 64.1,
+      dueDate: '2025-06-29',
+      category: 'utilities',
+      payee: 'Metro Water Authority',
+      accountNumber: '••••1108',
+      icon: FiDroplet,
     },
-    { 
-      id: 'bill4', 
-      name: 'Bank of America Mortgage', 
-      amount: 2250.00, 
-      dueDate: '2025-07-01',
-      category: 'housing',
-      priority: 'high',
-      vendor: 'Bank of America',
-      icon: FiHome,
-      description: 'VA Home Loan - Primary Residence'
-    },
-    { 
-      id: 'bill5', 
-      name: 'Wells Fargo Auto Loan', 
-      amount: 485.32, 
+    {
+      id: 'bill4',
+      name: 'Auto Loan',
+      amount: 385.32,
       dueDate: '2025-07-03',
-      category: 'essential',
-      priority: 'high',
-      vendor: 'Wells Fargo Bank',
-      icon: FiDollarSign,
-      description: 'Vehicle financing with military rate'
+      category: 'loan',
+      payee: 'Regional Auto Finance',
+      accountNumber: '••••5520',
+      icon: FiTruck,
+      autopay: true,
     },
-    { 
-      id: 'bill6', 
-      name: 'Citi Student Loan', 
-      amount: 310.25, 
+    {
+      id: 'bill5',
+      name: 'Credit Card',
+      amount: 220.75,
+      dueDate: '2025-06-30',
+      category: 'credit',
+      payee: 'Everyday Rewards Card',
+      accountNumber: '••••9014',
+      icon: FiCreditCard,
+    },
+    {
+      id: 'bill6',
+      name: 'Student Loan',
+      amount: 210.25,
       dueDate: '2025-07-08',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'Citibank',
+      category: 'loan',
+      payee: 'National Student Loan Servicing',
+      accountNumber: '••••2287',
       icon: FiDollarSign,
-      description: 'Education loan with SCRA benefits'
     },
-    { 
-      id: 'bill7', 
-      name: 'American Express Card', 
-      amount: 156.89, 
+    {
+      id: 'bill7',
+      name: 'Home & Auto Insurance',
+      amount: 156.89,
       dueDate: '2025-07-12',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'American Express',
-      icon: FiDollarSign,
-      description: 'AMEX Military Rewards Card'
+      category: 'insurance',
+      payee: 'Guardian Mutual Insurance',
+      accountNumber: '••••6603',
+      icon: FiAlertTriangle,
     },
-    { 
-      id: 'bill8', 
-      name: 'Navy Federal Personal Loan', 
-      amount: 275.00, 
-      dueDate: '2025-07-05',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'Navy Federal Credit Union',
-      icon: FiDollarSign,
-      description: 'Personal loan for PCS move expenses'
-    },
-    { 
-      id: 'bill9', 
-      name: 'Base Internet Service', 
-      amount: 79.99, 
+    {
+      id: 'bill8',
+      name: 'Internet Service',
+      amount: 69.99,
       dueDate: '2025-07-05',
       category: 'utilities',
-      priority: 'medium',
-      vendor: 'MilNet Communications',
+      payee: 'Comnet Broadband',
+      accountNumber: '••••4471',
       icon: FiWifi,
-      description: 'High-speed internet for base quarters'
     },
-    { 
-      id: 'bill10', 
-      name: 'Military Family Phone Plan', 
-      amount: 120.00, 
+    {
+      id: 'bill9',
+      name: 'Mobile Phone Plan',
+      amount: 95.0,
       dueDate: '2025-07-10',
       category: 'utilities',
-      priority: 'medium',
-      vendor: 'Armed Forces Mobile',
+      payee: 'Clearline Mobile',
+      accountNumber: '••••8829',
       icon: FiPhone,
-      description: 'Family communication plan with military discount'
     },
-    { 
-      id: 'bill11', 
-      name: 'Capital One Savings Goal', 
-      amount: 500.00, 
-      dueDate: '2025-07-01',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'Capital One Bank',
-      icon: FiDollarSign,
-      description: 'Automated savings transfer - Emergency Fund'
-    },
-    { 
-      id: 'bill12', 
-      name: 'TD Bank Business Account', 
-      amount: 25.00, 
-      dueDate: '2025-07-15',
-      category: 'essential',
-      priority: 'low',
-      vendor: 'TD Bank',
-      icon: FiDollarSign,
-      description: 'Monthly maintenance fee - Spouse business account'
-    },
-    { 
-      id: 'bill13', 
-      name: 'PNC Investment Account', 
-      amount: 750.00, 
-      dueDate: '2025-07-01',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'PNC Bank',
-      icon: FiDollarSign,
-      description: 'Monthly investment contribution - TSP supplement'
-    },
-    { 
-      id: 'bill14', 
-      name: 'Regions Bank Line of Credit', 
-      amount: 125.00, 
-      dueDate: '2025-07-07',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'Regions Bank',
-      icon: FiDollarSign,
-      description: 'Minimum payment - Emergency credit line'
-    },
-    { 
-      id: 'bill15', 
-      name: 'Morale Streaming Bundle', 
-      amount: 24.99, 
+    {
+      id: 'bill10',
+      name: 'Streaming Bundle',
+      amount: 24.99,
       dueDate: '2025-07-15',
       category: 'entertainment',
-      priority: 'low',
-      vendor: 'MWR Entertainment',
+      payee: 'StreamPlus',
+      accountNumber: '••••3305',
       icon: FiTv,
-      description: 'Recreation services streaming package'
     },
-    { 
-      id: 'bill16', 
-      name: 'Fifth Third Checking Fee', 
-      amount: 12.00, 
-      dueDate: '2025-07-01',
-      category: 'essential',
-      priority: 'low',
-      vendor: 'Fifth Third Bank',
-      icon: FiDollarSign,
-      description: 'Monthly maintenance - Joint account'
-    },
-    { 
-      id: 'bill17', 
-      name: 'Discover Card Payment', 
-      amount: 89.45, 
-      dueDate: '2025-07-18',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'Discover Financial',
-      icon: FiDollarSign,
-      description: 'Discover It Military Cashback Card'
-    },
-    { 
-      id: 'bill18', 
-      name: 'SunTrust Investment Transfer', 
-      amount: 400.00, 
-      dueDate: '2025-07-01',
-      category: 'essential',
-      priority: 'medium',
-      vendor: 'Truist Bank',
-      icon: FiDollarSign,
-      description: 'Retirement planning - IRA contribution'
-    }
   ];
 
   const accounts: Account[] = [
-    { value: 'usaa-checking', label: 'USAA Checking (****4567)', balance: 6750.00, type: 'military' },
-    { value: 'navy-federal-checking', label: 'Navy Federal Checking (****7890)', balance: 3850.50, type: 'military' },
-    { value: 'chase-checking', label: 'Chase Military Banking (****2341)', balance: 2100.25, type: 'checking' },
-    { value: 'bofa-checking', label: 'Bank of America Checking (****5678)', balance: 4250.75, type: 'checking' },
-    { value: 'wells-savings', label: 'Wells Fargo Military Savings (****9012)', balance: 12500.00, type: 'savings' },
-    { value: 'capital-one', label: 'Capital One 360 Checking (****3456)', balance: 1875.30, type: 'checking' },
-    { value: 'pnc-savings', label: 'PNC High Yield Savings (****7891)', balance: 8950.40, type: 'savings' },
-    { value: 'regions-checking', label: 'Regions LifeGreen Checking (****2345)', balance: 950.80, type: 'checking' }
+    { value: 'primary-checking', label: 'Primary Checking (••••4821)', balance: 4250.75, type: 'checking' },
+    { value: 'savings', label: 'Savings (••••9012)', balance: 8950.4, type: 'savings' },
+    { value: 'joint-checking', label: 'Joint Checking (••••2345)', balance: 1875.3, type: 'checking' },
   ];
 
+  const getAmount = (bill: Bill) => amounts[bill.id] ?? bill.amount;
+  const getPayDate = (bill: Bill) => payDates[bill.id] ?? bill.dueDate;
+
   const handleBillToggle = (billId: string) => {
-    setSelectedBills(prev =>
-      prev.includes(billId)
-        ? prev.filter(id => id !== billId)
-        : [...prev, billId]
+    setSelectedBills((prev) =>
+      prev.includes(billId) ? prev.filter((id) => id !== billId) : [...prev, billId]
     );
   };
 
-  const selectedBillsData = bills.filter(bill => selectedBills.includes(bill.id));
-  const totalAmount = selectedBillsData.reduce((sum, bill) => sum + bill.amount, 0);
-  const selectedAccount = accounts.find(acc => acc.value === fromAccount);
+  const allSelected = selectedBills.length === bills.length;
+  const toggleSelectAll = () => {
+    setSelectedBills(allSelected ? [] : bills.map((b) => b.id));
+  };
 
-  const handleSubmit = async () => {
+  const selectedBillsData = bills.filter((bill) => selectedBills.includes(bill.id));
+  const totalAmount = selectedBillsData.reduce((sum, bill) => sum + getAmount(bill), 0);
+  const selectedAccount = accounts.find((acc) => acc.value === fromAccount);
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+
+  // const formatDate = (dateStr: string) => {
+  //   const d = new Date(dateStr);
+  //   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  // };
+
+  const handleSubmit = () => {
+    if (selectedBills.length === 0) return;
     if (!selectedAccount || selectedAccount.balance < totalAmount) {
-      alert('Insufficient funds in selected account');
+      showToast('error', 'Insufficient funds in the selected account.');
       return;
     }
     setShowConfirmation(true);
@@ -267,181 +207,241 @@ export default function MilitaryPayBillsModal({ isOpen, onClose }: PayBillsModal
     setIsLoading(true);
     setShowConfirmation(false);
 
-    // Simulate secure military payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // Reset form and close modal
+    const paidCount = selectedBillsData.length;
+    const paidTotal = formatCurrency(totalAmount);
+
+    // Notify the parent (Dashboard) so each payment can be added to Recent Activity
+    onBillsPaid?.(
+      selectedBillsData.map((bill) => ({ name: bill.name, amount: getAmount(bill) }))
+    );
+
     setSelectedBills([]);
-    setFromAccount('');
+    setFromAccount('primary-checking');
     setIsLoading(false);
     onClose();
 
-    // Show success notification
-    alert(`✅ PAYMENT AUTHORIZED\n${selectedBillsData.length} bills paid successfully\nTotal: ${formatCurrency(totalAmount)}\nTransaction ID: MIL-${Date.now()}`);
+    showToast(
+      'success',
+      `${paidCount} payment${paidCount !== 1 ? 's' : ''} scheduled — ${paidTotal} from ${selectedAccount?.label}. Confirmation #${Date.now()}`
+    );
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'text-red-600 bg-red-100 dark:bg-red-900/30';
-      case 'medium': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30';
-      case 'low': return 'text-green-600 bg-green-100 dark:bg-green-900/30';
-      default: return 'text-gray-600 bg-gray-100 dark:bg-gray-900/30';
-    }
-  };
-
-  const getDaysUntilDue = (dueDate: string) => {
-    const due = new Date(dueDate);
-    const today = new Date();
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
+  const isOverdue = (dateStr: string) => new Date(dateStr).getTime() < new Date().setHours(0, 0, 0, 0);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-slate-500/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <FiShield className="text-2xl" />
-              <div>
-                <h2 className="text-2xl font-bold">Military Bill Payment System</h2>
-                <p className="text-blue-200 text-sm">Secure Financial Operations Portal</p>
-              </div>
+        <div className="bg-white border-b border-gray-200 px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="h-10 w-10 rounded-full bg-[#0A1F44]/5 flex items-center justify-center">
+              <FiFileText className="text-[#0A1F44]" size={20} />
             </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-300 text-2xl font-bold"
-              disabled={isLoading}
-            >
-              ×
-            </button>
+            <div>
+              <h2 className="text-xl font-semibold text-[#0A1F44]">Pay Bills</h2>
+              <p className="text-sm text-gray-500">Manage payees and schedule payments</p>
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            disabled={isLoading}
+          >
+            ×
+          </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        {/* Sub-nav — mirrors typical US bank bill pay tabs */}
+        {!showConfirmation && (
+          <div className="flex items-center gap-6 px-6 border-b border-gray-200 bg-white">
+            <button className="text-sm font-medium text-[#0A1F44] border-b-2 border-[#0A1F44] py-3">
+              Pay Bills
+            </button>
+            <button className="text-sm font-medium text-gray-400 py-3 cursor-default">
+              Payment Activity
+            </button>
+            <button className="text-sm font-medium text-gray-400 py-3 cursor-default">
+              Manage Payees
+            </button>
+            <button className="ml-auto flex items-center gap-1.5 text-sm font-medium text-[#1B4B91] py-3">
+              <FiPlus size={14} />
+              Add a payee
+            </button>
+          </div>
+        )}
+
+        <div className="p-6 overflow-y-auto flex-1 bg-white">
           {showConfirmation ? (
             /* Confirmation Screen */
-            <div className="text-center space-y-6">
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
-                <FiAlertTriangle className="mx-auto text-4xl text-yellow-600 mb-4" />
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  Confirm Payment Authorization
-                </h3>
+            <div className="text-center space-y-6 max-w-md mx-auto py-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+                <FiAlertTriangle className="mx-auto text-3xl text-amber-500 mb-3" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Review your payment</h3>
                 <div className="space-y-3 text-left">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Selected Bills:</span>
-                    <span>{selectedBillsData.length}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Bills selected</span>
+                    <span className="text-gray-900 font-medium">{selectedBillsData.length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Total Amount:</span>
-                    <span className="font-bold text-lg">{formatCurrency(totalAmount)}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Total amount</span>
+                    <span className="text-gray-900 font-semibold text-base">
+                      {formatCurrency(totalAmount)}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Payment Account:</span>
-                    <span>{selectedAccount?.label}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Pay from</span>
+                    <span className="text-gray-900 font-medium">{selectedAccount?.label}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Remaining Balance:</span>
-                    <span className={selectedAccount && selectedAccount.balance < totalAmount ? 'text-red-600 font-bold' : ''}>
+                  <div className="pt-3 border-t border-amber-200 flex justify-between text-sm">
+                    <span className="text-gray-500">Balance after payment</span>
+                    <span
+                      className={
+                        selectedAccount && selectedAccount.balance < totalAmount
+                          ? 'text-red-600 font-semibold'
+                          : 'text-gray-900 font-medium'
+                      }
+                    >
                       {selectedAccount ? formatCurrency(selectedAccount.balance - totalAmount) : 'N/A'}
                     </span>
                   </div>
                 </div>
               </div>
-              
-              <div className="flex justify-center space-x-4">
+
+              <div className="flex justify-center space-x-3">
                 <button
                   onClick={() => setShowConfirmation(false)}
-                  className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                 >
-                  Cancel
+                  Back
                 </button>
                 <button
                   onClick={confirmPayment}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                  disabled={selectedAccount && selectedAccount.balance < totalAmount}
+                  className="px-5 py-2.5 bg-[#0A1F44] text-white rounded-lg hover:bg-[#1B4B91] transition-colors text-sm font-medium flex items-center gap-2"
+                  disabled={selectedAccount ? selectedAccount.balance < totalAmount : true}
                 >
-                  <FiCheck />
-                  <span>Authorize Payment</span>
+                  <FiCheck size={16} />
+                  Schedule payment
                 </button>
               </div>
             </div>
           ) : (
-            /* Main Payment Form */
-            <div className="space-y-6">
-              {/* Bills Selection */}
-              <div>
-                <label className="block text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Select Bills for Payment
-                </label>
-                <div className="grid gap-4 max-h-80 overflow-y-auto">
-                  {bills.map(bill => {
+            <div className="space-y-5">
+              {/* Pay-from account selector, top of page like real bill pay screens */}
+              <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Pay from</p>
+                  <div className="relative mt-1">
+                    <select
+                      value={fromAccount}
+                      onChange={(e) => setFromAccount(e.target.value)}
+                      className="appearance-none bg-transparent pr-6 text-sm font-medium text-gray-900 focus:outline-none cursor-pointer"
+                    >
+                      {accounts.map((account) => (
+                        <option key={account.value} value={account.value}>
+                          {account.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FiChevronDown className="absolute right-0 top-1 text-gray-400 pointer-events-none" size={14} />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Available balance</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-1">
+                    {selectedAccount ? formatCurrency(selectedAccount.balance) : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bills table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                {/* Table header */}
+                <div className="hidden sm:grid grid-cols-[24px_1.8fr_1fr_1fr_28px] gap-4 items-center px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-[#0A1F44] focus:ring-[#1B4B91]"
+                  />
+                  <span>Payee</span>
+                  <span>Amount</span>
+                  <span>Deliver by</span>
+                  <span />
+                </div>
+
+                <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+                  {bills.map((bill) => {
                     const IconComponent = bill.icon;
-                    const daysUntilDue = getDaysUntilDue(bill.dueDate);
                     const isSelected = selectedBills.includes(bill.id);
-                    
+                    const overdue = isOverdue(bill.dueDate);
+
                     return (
                       <div
                         key={bill.id}
-                        className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        className={`grid grid-cols-[24px_1fr] sm:grid-cols-[24px_1.8fr_1fr_1fr_28px] gap-4 items-center px-4 py-3.5 transition-colors ${
+                          isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50'
                         }`}
-                        onClick={() => handleBillToggle(bill.id)}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-4">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
-                              isSelected
-                                ? 'bg-blue-600 text-white'
-                                : 'border-2 border-gray-300 dark:border-gray-600'
-                            }`}>
-                              {isSelected && <FiCheck size={14} />}
-                            </div>
-                            
-                            <div className="flex items-center space-x-3">
-                              <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                                <IconComponent size={20} className="text-gray-600 dark:text-gray-300" />
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-gray-900 dark:text-white">{bill.name}</h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{bill.description}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                  Vendor: {bill.vendor}
-                                </p>
-                              </div>
-                            </div>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleBillToggle(bill.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-[#0A1F44] focus:ring-[#1B4B91]"
+                        />
+
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <IconComponent size={16} className="text-gray-600" />
                           </div>
-                          
-                          <div className="text-right">
-                            <div className="text-xl font-bold text-gray-900 dark:text-white">
-                              {formatCurrency(bill.amount)}
-                            </div>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(bill.priority)}`}>
-                                {bill.priority.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-1 mt-2 text-xs text-gray-500">
-                              <FiClock size={12} />
-                              <span>
-                                Due: {bill.dueDate} ({daysUntilDue > 0 ? `${daysUntilDue} days` : 'Overdue'})
-                              </span>
-                            </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{bill.payee}</p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {bill.name} · Acct {bill.accountNumber}
+                              {bill.autopay && (
+                                <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-medium px-1.5 py-0.5 align-middle">
+                                  AutoPay
+                                </span>
+                              )}
+                            </p>
                           </div>
+                        </div>
+
+                        <div className="col-span-2 sm:col-span-1 flex items-center gap-1 pl-9 sm:pl-0">
+                          <span className="text-gray-400 text-sm">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={getAmount(bill)}
+                            onChange={(e) =>
+                              setAmounts((prev) => ({ ...prev, [bill.id]: parseFloat(e.target.value) || 0 }))
+                            }
+                            className="w-24 text-sm font-medium text-gray-900 border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1B4B91] focus:border-transparent"
+                          />
+                        </div>
+
+                        <div className="col-span-2 sm:col-span-1 flex items-center gap-2 pl-9 sm:pl-0">
+                          <FiCalendar size={13} className="text-gray-400 flex-shrink-0" />
+                          <input
+                            type="date"
+                            value={getPayDate(bill)}
+                            onChange={(e) =>
+                              setPayDates((prev) => ({ ...prev, [bill.id]: e.target.value }))
+                            }
+                            className="text-sm text-gray-700 border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1B4B91] focus:border-transparent w-full"
+                          />
+                        </div>
+
+                        <div className="hidden sm:flex justify-end">
+                          {overdue && (
+                            <span title="Past due">
+                              <FiClock className="text-red-500" size={14} />
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
@@ -449,95 +449,57 @@ export default function MilitaryPayBillsModal({ isOpen, onClose }: PayBillsModal
                 </div>
               </div>
 
-              {/* Account Selection */}
-              <div>
-                <label className="block text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  Payment Account
-                </label>
-                <select
-                  value={fromAccount}
-                  onChange={(e) => setFromAccount(e.target.value)}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">Select Payment Account</option>
-                  {accounts.map(account => (
-                    <option key={account.value} value={account.value}>
-                      {account.label} - Balance: {formatCurrency(account.balance)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Payment Summary */}
-              {selectedBills.length > 0 && (
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-6 rounded-lg border">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                    <FiDollarSign className="mr-2" />
-                    Payment Summary
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Bills Selected:</span>
-                      <span className="font-semibold">{selectedBills.length}</span>
-                    </div>
-                    <div className="flex justify-between text-xl font-bold">
-                      <span className="text-gray-900 dark:text-white">Total Amount:</span>
-                      <span className="text-blue-600 dark:text-blue-400">{formatCurrency(totalAmount)}</span>
-                    </div>
-                    {selectedAccount && (
-                      <div className="pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Account Balance After Payment:</span>
-                          <span className={`font-semibold ${
-                            selectedAccount.balance < totalAmount 
-                              ? 'text-red-600' 
-                              : 'text-green-600'
-                          }`}>
-                            {formatCurrency(selectedAccount.balance - totalAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-                  disabled={isLoading || selectedBills.length === 0 || !fromAccount}
-                >
-                  {isLoading ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Processing Secure Payment...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiShield />
-                      <span>Review Payment ({selectedBills.length} bills)</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <p className="text-xs text-gray-400">
+                Payments to enrolled payees are typically delivered within 1–2 business days.
+              </p>
             </div>
           )}
         </div>
+
+        {/* Sticky summary / action bar */}
+        {!showConfirmation && (
+          <div className="border-t border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
+            <div className="text-sm">
+              <span className="text-gray-500">
+                {selectedBills.length} bill{selectedBills.length !== 1 ? 's' : ''} selected
+              </span>
+              <span className="mx-2 text-gray-300">|</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(totalAmount)}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800"
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="px-5 py-2.5 bg-[#0A1F44] text-white rounded-lg hover:bg-[#1B4B91] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                disabled={isLoading || selectedBills.length === 0}
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>Review & Pay</>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

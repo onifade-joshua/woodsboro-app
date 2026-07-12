@@ -18,6 +18,9 @@ import BalanceChart from '../components/dashboard/BalanceChart';
 import IncomeExpenseChart from '../components/dashboard/IncomeExpenseChart';
 import UpcomingBills from '../components/dashboard/UpcomingBills';
 import TransferMoneyModal from '../../src/components/dashboard/modals/TransferMoneyModal';
+import PayBillsModal from '../../src/components/dashboard/modals/PayBillsModal';
+import DepositCheckModal from '../../src/components/dashboard/modals/DepositCheckModal';
+import LockCardModal from '../../src/components/dashboard/modals/LockCardModal';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -43,21 +46,32 @@ const PRIMARY_ACTIONS = [
   { key: 'lock', label: 'Lock card', icon: FiLock },
 ] as const;
 
-function PrimaryActions({ onTransferClick }: { onTransferClick: () => void }) {
+type PrimaryActionKey = typeof PRIMARY_ACTIONS[number]['key'];
+
+function PrimaryActions({
+  onActionClick,
+  isCardLocked,
+}: {
+  onActionClick: (key: PrimaryActionKey) => void;
+  isCardLocked: boolean;
+}) {
   return (
     <div className="grid grid-cols-4 gap-3 mb-6">
       {PRIMARY_ACTIONS.map(({ key, label, icon: Icon }) => (
         <button
           key={key}
-          onClick={key === 'transfer' ? onTransferClick : undefined}
-          className="flex flex-col items-center justify-center gap-2 py-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-[#1B4B91] hover:shadow-sm transition-all"
+          onClick={() => onActionClick(key)}
+          className="relative flex flex-col items-center justify-center gap-2 py-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-[#1B4B91] hover:shadow-sm transition-all"
         >
           <div className="h-9 w-9 rounded-full bg-[#0A1F44]/5 dark:bg-white/10 flex items-center justify-center">
             <Icon className="h-4 w-4 text-[#0A1F44] dark:text-white" />
           </div>
           <span className="text-xs font-medium text-[#334155] dark:text-gray-300">
-            {label}
+            {key === 'lock' && isCardLocked ? 'Card locked' : label}
           </span>
+          {key === 'lock' && isCardLocked && (
+            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
+          )}
         </button>
       ))}
     </div>
@@ -100,6 +114,10 @@ function AccountTile({
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'accounts' | 'insights'>('accounts');
   const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [isPayBillsOpen, setIsPayBillsOpen] = useState(false);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isLockCardOpen, setIsLockCardOpen] = useState(false);
+  const [isCardLocked, setIsCardLocked] = useState(false);
   const [timeRange, setTimeRange] = useState('month');
   const [incomeExpenseData, setIncomeExpenseData] = useState<any[]>([]);
   const [upcomingBills, setUpcomingBills] = useState<any[]>([]);
@@ -112,6 +130,7 @@ export default function Dashboard() {
     balanceHistory,
     lastUpdate,
     recentTransactions,
+    addManualTransaction,
   } = useRealTimeTransactions();
 
   const getFormattedBalanceHistory = () => {
@@ -172,6 +191,23 @@ export default function Dashboard() {
     loadBills();
   }, []);
 
+  const handlePrimaryActionClick = (key: PrimaryActionKey) => {
+    if (key === 'transfer') setIsTransferOpen(true);
+    if (key === 'pay') setIsPayBillsOpen(true);
+    if (key === 'deposit') setIsDepositOpen(true);
+    if (key === 'lock') setIsLockCardOpen(true);
+  };
+
+  const handleBillsPaid = (paidBills: { name: string; amount: number }[]) => {
+    paidBills.forEach((bill) => {
+      addManualTransaction(`Bill Payment - ${bill.name}`, -Math.abs(bill.amount), 'Bill Payment');
+    });
+  };
+
+  const handleCheckDeposit = (amount: number) => {
+    addManualTransaction('Mobile Check Deposit', Math.abs(amount), 'Deposit');
+  };
+
   return (
     <div className="animate-fade-in">
       {/* Header */}
@@ -187,9 +223,28 @@ export default function Dashboard() {
       </div>
 
       {/* Primary actions — always visible, this is what a bank home screen leads with */}
-      <PrimaryActions onTransferClick={() => setIsTransferOpen(true)} />
+      <PrimaryActions onActionClick={handlePrimaryActionClick} isCardLocked={isCardLocked} />
 
       <TransferMoneyModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
+
+      <PayBillsModal
+        isOpen={isPayBillsOpen}
+        onClose={() => setIsPayBillsOpen(false)}
+        onBillsPaid={handleBillsPaid}
+      />
+
+      <DepositCheckModal
+        isOpen={isDepositOpen}
+        onClose={() => setIsDepositOpen(false)}
+        onDeposit={handleCheckDeposit}
+      />
+
+      <LockCardModal
+        isOpen={isLockCardOpen}
+        onClose={() => setIsLockCardOpen(false)}
+        isLocked={isCardLocked}
+        onToggleLock={() => setIsCardLocked(prev => !prev)}
+      />
 
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-6 border-b border-gray-200 dark:border-gray-700">
